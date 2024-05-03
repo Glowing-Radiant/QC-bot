@@ -1,16 +1,29 @@
+import dotenv
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import threading
 import time
 import re
-from revChatGPT.V1 import Chatbot
+import pathlib
+import textwrap
+import google.generativeai as genai
 
-chatbot = Chatbot(config={"access_token": "Your access token"})
+from IPython.display import display
+from IPython.display import Markdown
+load_dotenv()
+def to_markdown(text):
+    text = text.replace(' ', '  *')
+    return Markdown(textwrap.indent(text, '> ', predicate=lambda _: True))
+
+# Configure the Generative AI API key
+genai.configure(api_key=gapi)
+model = genai.GenerativeModel('gemini-pro')
 
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_argument('--ignore-certificate-errors')
-#chrome_options.add_argument('--headless')
-#chrome_options.add_argument('--disable-gpu')
+#we need a head right now.
+# chrome_options.add_argument('--headless')
+# chrome_options.add_argument('--disable-gpu')
 driver = webdriver.Chrome(options=chrome_options)
 
 def main():
@@ -24,14 +37,18 @@ def main():
         interact()
 
     except Exception as e:
-        print("An error occurred:", e)
+        print(f"An error occurred: {e}")
     finally:
         driver.quit()
 
 def login_qcsalon():
-    driver.find_element('id', 'login').send_keys('username')
-    driver.find_element('id', 'password').send_keys('Your Password')
-    driver.find_element("xpath", "//button[contains(text(), 'Sign-in')]").click()
+    username_field = driver.find_element('id', 'login')
+    password_field = driver.find_element('id', 'password')
+    sign_in_button = driver.find_element("xpath", "//button[contains(text(), 'Sign-in')]")
+
+    username_field.send_keys(username)
+    password_field.send_keys(password)
+    sign_in_button.click()
     time.sleep(5)
 
 def display_events():
@@ -55,13 +72,14 @@ def process_events(events):
                 if cleaned_text:
                     try:
                         response = generate_response(cleaned_text)
-                        send_reply(response)
+                        if response:
+                            send_reply(response)
                     except Exception as e:
-                        print("Error generating or sending response:", e)
+                        print(f"Error generating or sending response: {e}")
                 else:
-                    print("ignoring line with only non BMP characters:", line)
+                    print("Ignoring line with only non-BMP characters:", line)
             else:
-                print("invalid line format:", line)
+                print("Invalid line format:", line)
 
 def send_reply(reply):
     try:
@@ -70,21 +88,22 @@ def send_reply(reply):
         cmd_box.send_keys(Keys.RETURN)
         time.sleep(4)
     except Exception as e:
-        print("Error sending reply:", e)
+        print(f"Error sending reply: {e}")
 
 def generate_response(prompt):
-    response = ""
+    chat = model.start_chat(history=[])
     try:
-        for data in chatbot.ask(prompt):
-            response = data["message"]
-        response = response.replace("\n", " ").replace("\r", "")
+        response = chat.send_message(prompt)
+        to_markdown(response.text)
+        response_text = response.text.replace("\n", " ").replace("\r", "")
+        return response_text
     except Exception as e:
-        print("Error generating response:", e)
-    return response
+        print(f"Error generating response: {e}")
+        return None
 
 def interact():
     while True:
-        cmd = input("Enter a command (or quit to exit): ")
+        cmd = input("Enter a command (or 'quit' to exit): ")
         if cmd.lower() == 'quit':
             break
         cmd_box = driver.find_element('id', 'chatBox')
