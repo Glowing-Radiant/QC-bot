@@ -1,5 +1,6 @@
 import dotenv
 from selenium import webdriver
+import os
 from selenium.webdriver.common.keys import Keys
 import threading
 import time
@@ -10,13 +11,15 @@ import google.generativeai as genai
 
 from IPython.display import display
 from IPython.display import Markdown
-load_dotenv()
+dotenv.load_dotenv()
+
 def to_markdown(text):
     text = text.replace(' ', '  *')
     return Markdown(textwrap.indent(text, '> ', predicate=lambda _: True))
 
 # Configure the Generative AI API key
-genai.configure(api_key=gapi)
+Gapi=os.getenv("gapi")
+genai.configure(api_key=Gapi)
 model = genai.GenerativeModel('gemini-pro')
 
 chrome_options = webdriver.ChromeOptions()
@@ -45,9 +48,10 @@ def login_qcsalon():
     username_field = driver.find_element('id', 'login')
     password_field = driver.find_element('id', 'password')
     sign_in_button = driver.find_element("xpath", "//button[contains(text(), 'Sign-in')]")
-
-    username_field.send_keys(username)
-    password_field.send_keys(password)
+    user=os.getenv('username')
+    username_field.send_keys(user)
+    passw=os.getenv('password')
+    password_field.send_keys(passw)
     sign_in_button.click()
     time.sleep(5)
 
